@@ -1,0 +1,56 @@
+syntax = "proto3";
+
+package content;
+
+option go_package = "your_project/internal/proto/contentpb";
+
+service ContentService {
+  rpc ModerateContent(ModerateContentRequest) returns (ModerateContentResponse);
+  rpc GetUnmoderatedContent(GetUnmoderatedContentRequest) returns (GetUnmoderatedContentResponse);
+  rpc AddContent(AddContentRequest) returns (AddContentResponse);
+}
+
+message AddContentRequest {
+  string building = 1;
+  string floor = 2;
+  string notes = 3;
+  string file_name = 4;
+  string file_path = 5;
+  string start_time = 6;
+  string end_time = 7;
+}
+
+message AddContentResponse {
+  string content_id = 1;
+}
+
+message ModerateContentRequest {
+  int32 content_id = 1;
+  int32 status_id = 2; // 3 - одобрено, 4 - отклонено
+  string reason = 3; // Опционально, используется при отклонении
+}
+
+message ModerateContentResponse {
+  bool success = 1;
+}
+
+message GetUnmoderatedContentRequest {}
+
+message GetUnmoderatedContentResponse {
+  repeated ContentForDB contents = 1;
+}
+
+message ContentForDB {
+  int32 id = 1;
+  int64 user_id = 2;
+  string mac_address = 3;
+  string file_name = 4;
+  string file_path = 5;
+  string start_time = 6;
+  string end_time = 7;
+  ContentHistory latest_history = 8;
+}
+
+message ContentHistory {
+  // Опиши структуру ContentHistory, если она содержит поля
+}

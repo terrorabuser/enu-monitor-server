@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Загрузка контента</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        form { max-width: 400px; margin: auto; }
+        label, select, input { display: block; margin-bottom: 10px; width: 100%; }
+        button { margin-top: 10px; padding: 10px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h2>Форма загрузки контента</h2>
+    <form id="uploadForm" enctype="multipart/form-data">
+        <label for="building">Выберите здание:</label>
+        <select id="building" name="building" required></select>
+        
+        <label for="floor">Выберите этаж:</label>
+        <select id="floor" name="floor" required></select>
+        
+        <label for="notes">Выберите примечание:</label>
+        <select id="notes" name="notes" required></select>
+        
+        <label for="file">Выберите файл:</label>
+        <input type="file" id="file" name="file" required>
+        
+        <label for="start_time">Время начала:</label>
+        <input type="text" id="start_time" name="start_time" required>
+        
+        <label for="end_time">Время окончания:</label>
+        <input type="text" id="end_time" name="end_time" required>
+        
+        <button type="submit">Отправить</button>
+    </form>
+
+    <script>
+        async function fetchBuildings() {
+            const response = await fetch('http://localhost:8080/api/buildings');
+            const buildings = await response.json();
+            const buildingSelect = document.getElementById('building');
+            buildings.forEach(building => {
+                let option = document.createElement('option');
+                option.value = building;
+                option.textContent = building;
+                buildingSelect.appendChild(option);
+            });
+        }
+
+        async function fetchFloors(building) {
+            const response = await fetch(`http://localhost:8080/api/floors/${building}`);
+            const floors = await response.json();
+            const floorSelect = document.getElementById('floor');
+            floorSelect.innerHTML = '';
+            floors.forEach(floor => {
+                let option = document.createElement('option');
+                option.value = floor;
+                option.textContent = floor;
+                floorSelect.appendChild(option);
+            });
+        }
+
+        async function fetchNotes(building, floor) {
+            const response = await fetch(`http://localhost:8080/api/notes/${building}/${floor}`);
+            const notes = await response.json();
+            const notesSelect = document.getElementById('notes');
+            notesSelect.innerHTML = '';
+            notes.forEach(note => {
+                let option = document.createElement('option');
+                option.value = note;
+                option.textContent = note;
+                notesSelect.appendChild(option);
+            });
+        }
+
+        document.getElementById('building').addEventListener('change', function() {
+            fetchFloors(this.value);
+        });
+
+        document.getElementById('floor').addEventListener('change', function() {
+            fetchNotes(document.getElementById('building').value, this.value);
+        });
+
+        document.getElementById('uploadForm').addEventListener('submit', async function(event) {
+            event.preventDefault();
+            const formData = new FormData(this);
+            const response = await fetch('http://localhost:8080/content', {
+                method: 'POST',
+                body: formData
+            });
+            const result = await response.json();
+            alert(result.message || 'Ошибка отправки');
+        });
+
+        fetchBuildings();
+    </script>
+</body>
+</html>
