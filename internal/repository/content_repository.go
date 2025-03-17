@@ -16,12 +16,10 @@ func NewContentRepository(db *sql.DB) *ContentRepository {
 	}
 }
 
-func (r *ContentRepository) AddContent(content *entity.ContentForDB) (int, error) {
+func (r *ContentRepository) AddContent(tx *sql.Tx, content *entity.ContentForDB) (int, error) {
 	var id int
 
-	log.Println(content.UserID)
-
-	err := r.db.QueryRow(
+	err := tx.QueryRow(
 		"INSERT INTO content (user_id, macaddress, file_name, file_path, start_time, end_time) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id",
 		content.UserID, content.MacAddress, content.FileName, content.FilePath, content.StartTime, content.EndTime,
 	).Scan(&id)
@@ -133,17 +131,17 @@ func (r *ContentRepository) DeleteContent(contentID int) error {
 }
 
 
-func (r *ContentRepository) AddContentHistory(contentHistory *entity.ContentHistory) error {
-	_, err := r.db.Exec(
+func (r *ContentRepository) AddContentHistory(tx *sql.Tx, contentHistory *entity.ContentHistory) error {
+	_, err := tx.Exec(
 		"INSERT INTO content_history (content_id, status_id, created_at, user_id) VALUES ($1, $2, $3, $4)",
 		contentHistory.ContentID, contentHistory.StatusID, contentHistory.CreatedAt, contentHistory.UserID,
 	)
 	return err
 }
 
-func (r *ContentRepository) UpdateContentLatestHistory(contentID, statusID int) error {
+func (r *ContentRepository) UpdateContentLatestHistory(tx *sql.Tx, contentID, statusID int) error {
 	// Обновляем поле latest_history в таблице content
-	_, err := r.db.Exec(
+	_, err := tx.Exec(
 		"UPDATE content SET latest_history = $1 WHERE id = $2",
 		statusID, contentID,
 	)
@@ -152,7 +150,7 @@ func (r *ContentRepository) UpdateContentLatestHistory(contentID, statusID int) 
 	}
 
 	// Обновляем статус последней записи в content_history
-	_, err = r.db.Exec(
+	_, err = tx.Exec(
 		"UPDATE content_history SET status_id = $1 WHERE content_id = $2",
 		statusID, contentID,
 	)
@@ -160,3 +158,9 @@ func (r *ContentRepository) UpdateContentLatestHistory(contentID, statusID int) 
 	return err
 }
 
+
+
+func (r *ContentRepository) BeginTransaction ()(*sql.Tx, error){
+	// создаем транзакцию
+	return r.db.Begin()
+}

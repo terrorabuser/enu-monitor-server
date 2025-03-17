@@ -17,9 +17,17 @@ func NewContentService(repo *repository.ContentRepository) *ContentService {
 // Добавление контента
 func (s *ContentService) AddContent(content *entity.ContentForDB) (int, error) {
 
-     // 1. Добавляем контент и получаем его ID
-    contentID, err := s.repo.AddContent(content)
+    // 0. Создаем транзацкию
+    tx, err := s.repo.BeginTransaction()
     if err != nil {
+        return 0, err
+    }
+
+
+     // 1. Добавляем контент и получаем его ID
+    contentID, err := s.repo.AddContent(tx, content)
+    if err != nil {
+        tx.Rollback()
         return 0, err
     }
 
@@ -32,16 +40,24 @@ func (s *ContentService) AddContent(content *entity.ContentForDB) (int, error) {
     }
 
     // 3. Добавляем запись в историю
-    err = s.repo.AddContentHistory(&contentHistory)
+    err = s.repo.AddContentHistory(tx, &contentHistory)
     if err != nil {
+        tx.Rollback()
         return 0, err
     }
 
     // 4. Обновляем latest_history в monitors
-	err = s.repo.UpdateContentLatestHistory(contentID, contentHistory.StatusID)
+	err = s.repo.UpdateContentLatestHistory(tx, contentID, contentHistory.StatusID)
 	if err != nil {
+        tx.Rollback()
         return 0, err
 	}
+
+    err = tx.Commit()
+    if err != nil {
+        return 0, err
+    }
+
 
 
     // 5. Возвращаем ID контента
@@ -75,6 +91,13 @@ func (s *ContentService) GetContentByID(contentID int) (*entity.ContentForDB, er
 }
 
 func (s *ContentService) GetContentForModeration() ([]*entity.ContentForDB, error) {
+    tx, err := s.repo.BeginTransaction()
+    if err != nil {
+        return nil, err
+    }
+
+
+
 	contents, err := s.repo.GetContentForModeration()
     if err != nil {
         return nil, err
@@ -82,13 +105,17 @@ func (s *ContentService) GetContentForModeration() ([]*entity.ContentForDB, erro
 
     // Меняем статус на Отправлено на модерацию
     for _, content := range contents {
-        err = s.repo.UpdateContentLatestHistory(content.ID, entity.ContentModerated)
+        err = s.repo.UpdateContentLatestHistory(tx, content.ID, entity.ContentModerated)
         if err != nil {
+            tx.Rollback()
             return nil, err
         }
     }
 
-
+    err = tx.Commit()
+    if err != nil {
+        return nil, err
+    }
 
     return contents, nil
 
@@ -97,5 +124,16 @@ func (s *ContentService) GetContentForModeration() ([]*entity.ContentForDB, erro
 
 // Обновление статуса контента
 func (s *ContentService) UpdateContentLatestHistory(contentID, statusID int) error {
-    return s.repo.UpdateContentLatestHistory(contentID, statusID)
+    tx, err := s.repo.BeginTransaction()
+    if err != nil {
+        return err
+    }
+
+    err = s.repo.UpdateContentLatestHistory(tx, contentID, statusID)
+    if err != nil {
+        tx.Rollback()
+        return err
+    }
+
+    return tx.Commit()
 }
