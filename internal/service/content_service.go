@@ -7,133 +7,161 @@ import (
 )
 
 type ContentService struct {
-    repo *repository.ContentRepository
+	repo *repository.ContentRepository
 }
 
 func NewContentService(repo *repository.ContentRepository) *ContentService {
-    return &ContentService{repo: repo}
+	return &ContentService{repo: repo}
 }
 
 // Добавление контента
 func (s *ContentService) AddContent(content *entity.ContentForDB) (int, error) {
 
-    // 0. Создаем транзацкию
-    tx, err := s.repo.BeginTransaction()
-    if err != nil {
-        return 0, err
-    }
-
-
-     // 1. Добавляем контент и получаем его ID
-    contentID, err := s.repo.AddContent(tx, content)
-    if err != nil {
-        tx.Rollback()
-        return 0, err
-    }
-
-    // 2. history content  created
-    contentHistory := entity.ContentHistory{
-        ContentID: contentID,
-        StatusID: entity.ContentCreated,
-        CreatedAt: time.Now(),
-        UserID: content.UserID,
-    }
-
-    // 3. Добавляем запись в историю
-    err = s.repo.AddContentHistory(tx, &contentHistory)
-    if err != nil {
-        tx.Rollback()
-        return 0, err
-    }
-
-    // 4. Обновляем latest_history в monitors
-	err = s.repo.UpdateContentLatestHistory(tx, contentID, contentHistory.StatusID)
+	// 0. Создаем транзацкию
+	tx, err := s.repo.BeginTransaction()
 	if err != nil {
-        tx.Rollback()
-        return 0, err
+		return 0, err
 	}
 
-    err = tx.Commit()
-    if err != nil {
-        return 0, err
-    }
+	// 1. Добавляем контент и получаем его ID
+	contentID, err := s.repo.AddContent(tx, content)
+	if err != nil {
+		tx.Rollback()
+		return 0, err
+	}
+
+	// 2. history content  created
+	contentHistory := entity.ContentHistory{
+		ContentID: contentID,
+		StatusID:  entity.ContentCreated,
+		CreatedAt: time.Now(),
+		UserID:    content.UserID,
+	}
+	
+	// 3. Добавляем запись в историю
+	err = s.repo.AddContentHistory(tx, &contentHistory)
+	if err != nil {
+		tx.Rollback()
+		return 0, err
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return 0, err
+	}
+
+	// 5. Возвращаем ID контента
+	return contentID, nil
+}
 
 
-
-    // 5. Возвращаем ID контента
-    return contentID, nil
+func (s *ContentService) GetMacAddressByLocation(building string, floor int, notes string) (string, error) {
+	return s.repo.GetMacAddressByLocation(building, floor, notes)
 }
 
 
 
-func (s *ContentService) AddModeratedContent(content *entity.ContentForDB) (int, error) {
-    return s.repo.AddModeratedContent(content)
-}
 
-func (s *ContentService) GetMacAddressByLocation(building, floor, notes string) (string, error) {
-    return s.repo.GetMacAddressByLocation(building, floor, notes)
-}
+// content_id, status_id, user_id
+func (s *ContentService) GetContents(filter *entity.ContentFilter) ([]*entity.ContentForDB, error) {
 
-
-// Подтверждение контента
-// func (s *ContentService) ApproveContent(contentID int64) error {
-//     return s.repo.UpdateContentStatus(contentID, "approved", "")
-// }
-
-// // Отклонение контента с указанием причины
-// func (s *ContentService) RejectContent(contentID int64, reason string) error {
-//     return s.repo.UpdateContentStatus(contentID, "rejected", reason)
-// }
-
-// Получение контента по ID
-func (s *ContentService) GetContentByID(contentID int) (*entity.ContentForDB, error) {
-    return s.repo.GetContentByID(contentID)
-}
-
-func (s *ContentService) GetContentForModeration() ([]*entity.ContentForDB, error) {
-    tx, err := s.repo.BeginTransaction()
-    if err != nil {
-        return nil, err
-    }
-
-
-
-	contents, err := s.repo.GetContentForModeration()
-    if err != nil {
-        return nil, err
-    }
-
-    // Меняем статус на Отправлено на модерацию
-    for _, content := range contents {
-        err = s.repo.UpdateContentLatestHistory(tx, content.ID, entity.ContentModerated)
-        if err != nil {
-            tx.Rollback()
-            return nil, err
-        }
-    }
-
-    err = tx.Commit()
-    if err != nil {
-        return nil, err
-    }
-
-    return contents, nil
-
+	contents, err := s.repo.GetContents(filter)
+	if err != nil {
+		return nil, err
+	}
+	return contents, nil
 
 }
 
-// Обновление статуса контента
-func (s *ContentService) UpdateContentLatestHistory(contentID, statusID int) error {
-    tx, err := s.repo.BeginTransaction()
-    if err != nil {
-        return err
-    }
 
-    err = s.repo.UpdateContentLatestHistory(tx, contentID, statusID)
-    if err != nil {
-        tx.Rollback()
-        return err
-    }
+func (s *ContentService) SendContentToModeration(contentID, statusID int, userID int64) (string, error) {
+	// если переданный statusID не равен entity.ContentModerated, то возвращаем ошибку
+	if statusID != entity.ContentModerated {
+		return "Недостаточно прав для совершения операции", nil
+	}
 
-    return tx.Commit()
+
+	// старт транзакции
+	tx, err := s.repo.BeginTransaction()
+	if err != nil {
+		return "", err
+	}
+	defer tx.Rollback() // Откатится, если `Commit()` не будет вызван
+
+	// Получаем последний status_id 
+	lastStatusID, err := s.repo.GetLastStatusID(tx, contentID)
+	if err != nil {
+		return "", err
+	}
+
+
+	// Проверка lastStatusID
+	if lastStatusID == entity.ContentModerated{
+		return "Контент уже отправлен на модерацию", nil
+	}
+
+	if lastStatusID == entity.ContentApproved {
+		return "Контент уже одобрен", nil
+	}
+
+	if lastStatusID == entity.ContentCreated && lastStatusID != entity.ContentRejected {
+
+		err := s.repo.AddContentHistory(tx, &entity.ContentHistory{
+			ContentID: contentID,
+			StatusID:  statusID,
+			CreatedAt: time.Now(),
+			UserID:    userID,
+		})
+		if err != nil {
+			return "", err
+		}
+		return "Контент отправлен на модерацию!!!", nil
+	}
+
+	
+	// Фиксация транзакции
+	if err := tx.Commit(); err != nil {
+		return "", err
+	}
+
+	// Если `Commit()` прошел успешно, `defer tx.Rollback()` ничего не сделает
+	return "ы", nil
+}
+
+
+func (s *ContentService) ModerateContent(req *entity.ModerateContentRequest) (bool, error) {
+	// Начало транзакции
+	tx, err := s.repo.BeginTransaction()
+	if err != nil {
+		return false, err
+	}
+	defer tx.Rollback() // Откат транзакции в случае ошибки
+
+
+	// Получаем последний статус контента
+	lastStatusID , err := s.repo.GetLastStatusID(tx, req.ContentID)
+	if err != nil {
+		return false, err
+	}
+
+
+	// Проверяем, что статус контента позволяет его модерацию
+	if lastStatusID == entity.ContentModerated {
+		err := s.repo.AddContentHistory(tx, &entity.ContentHistory{
+			ContentID: req.ContentID,
+			StatusID:  req.StatusID,
+			CreatedAt: time.Now(),
+			UserID:    req.UserID,
+		})
+		if err != nil {
+			return false, err
+		}
+		return true, nil
+	}  
+	// Фиксация транзакции
+	if err := tx.Commit(); err != nil {
+		return false, err
+	}
+
+	return false, err
 }

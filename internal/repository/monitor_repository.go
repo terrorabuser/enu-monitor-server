@@ -15,6 +15,20 @@ func NewMonitorRepository(db *sql.DB) *MonitorRepository {
 	return &MonitorRepository{db: db}
 }
 
+// Получение мак адреса по зданию и этажу
+func (r *ContentRepository) GetMacAddressByLocation(building string, floor int, notes string) (string, error) {
+	var macAddress string
+	err := r.db.QueryRow(
+		"SELECT macaddress FROM monitors WHERE building = $1 AND floor = $2 AND notes = $3",
+		building, floor, notes,
+	).Scan(&macAddress)
+
+	if err != nil {
+		return "", err
+	}
+	return macAddress, nil
+}
+
 
 func (r *MonitorRepository) GetAllMonitors() ([]entity.Monitor, error){
 	rows, err := r.db.Query("SELECT * FROM monitors")
@@ -34,6 +48,7 @@ func (r *MonitorRepository) GetAllMonitors() ([]entity.Monitor, error){
     }
     return monitors, nil
 }
+
 
 func (r *MonitorRepository) CheckMonitorByPassword(macaddress string) (*entity.Monitor, error) {
     return &entity.Monitor{}, nil // Возвращаем пустую структуру

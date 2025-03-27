@@ -2,10 +2,20 @@ package handler
 
 import (
 	"golang_gpt/internal/repository"
+	"golang_gpt/internal/service"
 	"net/http"
-	"github.com/gin-gonic/gin"
 	"strconv"
+
+	"github.com/gin-gonic/gin"
 )
+
+type Handler struct {
+	authMonitorService *service.AuthMonitorService
+}
+
+func NewHandler()  {
+	
+}
 
 type ApiHandler struct {
 	repo *repository.ApiRepository
@@ -49,9 +59,6 @@ func (h *ApiHandler) GetNotes(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Неверный формат этажа"})
 		return
 	}
-
-
-
 
 	notes, err := h.repo.GetNotes(building, floor)
 	if err != nil {

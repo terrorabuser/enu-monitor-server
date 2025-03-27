@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.5.1
 // - protoc             v6.30.0
-// source: internal/proto/content.proto
+// source: content.proto
 
 package contentpb
 
@@ -19,9 +19,10 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	ContentService_ModerateContent_FullMethodName       = "/content.ContentService/ModerateContent"
-	ContentService_GetUnmoderatedContent_FullMethodName = "/content.ContentService/GetUnmoderatedContent"
-	ContentService_AddContent_FullMethodName            = "/content.ContentService/AddContent"
+	ContentService_ModerateContent_FullMethodName         = "/content.ContentService/ModerateContent"
+	ContentService_GetContents_FullMethodName             = "/content.ContentService/GetContents"
+	ContentService_AddContent_FullMethodName              = "/content.ContentService/AddContent"
+	ContentService_SendContentToModeration_FullMethodName = "/content.ContentService/SendContentToModeration"
 )
 
 // ContentServiceClient is the client API for ContentService service.
@@ -29,8 +30,9 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ContentServiceClient interface {
 	ModerateContent(ctx context.Context, in *ModerateContentRequest, opts ...grpc.CallOption) (*ModerateContentResponse, error)
-	GetUnmoderatedContent(ctx context.Context, in *GetUnmoderatedContentRequest, opts ...grpc.CallOption) (*GetUnmoderatedContentResponse, error)
+	GetContents(ctx context.Context, in *GetContentsRequest, opts ...grpc.CallOption) (*GetContentsResponse, error)
 	AddContent(ctx context.Context, in *AddContentRequest, opts ...grpc.CallOption) (*AddContentResponse, error)
+	SendContentToModeration(ctx context.Context, in *SendContentToModerationRequest, opts ...grpc.CallOption) (*SendContentToModerationResponse, error)
 }
 
 type contentServiceClient struct {
@@ -51,10 +53,10 @@ func (c *contentServiceClient) ModerateContent(ctx context.Context, in *Moderate
 	return out, nil
 }
 
-func (c *contentServiceClient) GetUnmoderatedContent(ctx context.Context, in *GetUnmoderatedContentRequest, opts ...grpc.CallOption) (*GetUnmoderatedContentResponse, error) {
+func (c *contentServiceClient) GetContents(ctx context.Context, in *GetContentsRequest, opts ...grpc.CallOption) (*GetContentsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GetUnmoderatedContentResponse)
-	err := c.cc.Invoke(ctx, ContentService_GetUnmoderatedContent_FullMethodName, in, out, cOpts...)
+	out := new(GetContentsResponse)
+	err := c.cc.Invoke(ctx, ContentService_GetContents_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -71,13 +73,24 @@ func (c *contentServiceClient) AddContent(ctx context.Context, in *AddContentReq
 	return out, nil
 }
 
+func (c *contentServiceClient) SendContentToModeration(ctx context.Context, in *SendContentToModerationRequest, opts ...grpc.CallOption) (*SendContentToModerationResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SendContentToModerationResponse)
+	err := c.cc.Invoke(ctx, ContentService_SendContentToModeration_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ContentServiceServer is the server API for ContentService service.
 // All implementations must embed UnimplementedContentServiceServer
 // for forward compatibility.
 type ContentServiceServer interface {
 	ModerateContent(context.Context, *ModerateContentRequest) (*ModerateContentResponse, error)
-	GetUnmoderatedContent(context.Context, *GetUnmoderatedContentRequest) (*GetUnmoderatedContentResponse, error)
+	GetContents(context.Context, *GetContentsRequest) (*GetContentsResponse, error)
 	AddContent(context.Context, *AddContentRequest) (*AddContentResponse, error)
+	SendContentToModeration(context.Context, *SendContentToModerationRequest) (*SendContentToModerationResponse, error)
 	mustEmbedUnimplementedContentServiceServer()
 }
 
@@ -91,11 +104,14 @@ type UnimplementedContentServiceServer struct{}
 func (UnimplementedContentServiceServer) ModerateContent(context.Context, *ModerateContentRequest) (*ModerateContentResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ModerateContent not implemented")
 }
-func (UnimplementedContentServiceServer) GetUnmoderatedContent(context.Context, *GetUnmoderatedContentRequest) (*GetUnmoderatedContentResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetUnmoderatedContent not implemented")
+func (UnimplementedContentServiceServer) GetContents(context.Context, *GetContentsRequest) (*GetContentsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetContents not implemented")
 }
 func (UnimplementedContentServiceServer) AddContent(context.Context, *AddContentRequest) (*AddContentResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddContent not implemented")
+}
+func (UnimplementedContentServiceServer) SendContentToModeration(context.Context, *SendContentToModerationRequest) (*SendContentToModerationResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SendContentToModeration not implemented")
 }
 func (UnimplementedContentServiceServer) mustEmbedUnimplementedContentServiceServer() {}
 func (UnimplementedContentServiceServer) testEmbeddedByValue()                        {}
@@ -136,20 +152,20 @@ func _ContentService_ModerateContent_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ContentService_GetUnmoderatedContent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetUnmoderatedContentRequest)
+func _ContentService_GetContents_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetContentsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ContentServiceServer).GetUnmoderatedContent(ctx, in)
+		return srv.(ContentServiceServer).GetContents(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: ContentService_GetUnmoderatedContent_FullMethodName,
+		FullMethod: ContentService_GetContents_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ContentServiceServer).GetUnmoderatedContent(ctx, req.(*GetUnmoderatedContentRequest))
+		return srv.(ContentServiceServer).GetContents(ctx, req.(*GetContentsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -172,6 +188,24 @@ func _ContentService_AddContent_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ContentService_SendContentToModeration_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SendContentToModerationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ContentServiceServer).SendContentToModeration(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ContentService_SendContentToModeration_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ContentServiceServer).SendContentToModeration(ctx, req.(*SendContentToModerationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ContentService_ServiceDesc is the grpc.ServiceDesc for ContentService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -184,14 +218,18 @@ var ContentService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _ContentService_ModerateContent_Handler,
 		},
 		{
-			MethodName: "GetUnmoderatedContent",
-			Handler:    _ContentService_GetUnmoderatedContent_Handler,
+			MethodName: "GetContents",
+			Handler:    _ContentService_GetContents_Handler,
 		},
 		{
 			MethodName: "AddContent",
 			Handler:    _ContentService_AddContent_Handler,
 		},
+		{
+			MethodName: "SendContentToModeration",
+			Handler:    _ContentService_SendContentToModeration_Handler,
+		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "internal/proto/content.proto",
+	Metadata: "content.proto",
 }

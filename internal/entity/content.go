@@ -27,9 +27,8 @@ type ContentHistory struct {
 	ContentID int       `json:"content_id"`
 	StatusID  int       `json:"status_id"`
 	CreatedAt time.Time `json:"created_at"`
-	UserID    int64       `json:"user_id"`
+	UserID    int64     `json:"user_id"`
 }
-
 
 type ContentForMonitor struct {
 	FileName  string `json:"file_name"`
@@ -48,9 +47,17 @@ type ContentRequest struct {
 	EndTime   string `json:"end_time"`
 }
 
-
 type ModerateContentRequest struct {
-	ContentID int    `json:"content_id"` // ID контента, который модератор проверяет
-	StatusID  int    `json:"status_id"`  // ID статуса (например, ContentApproved, ContentRejected)
+	ContentID int    `json:"content_id"`       // ID контента, который модератор проверяет
+	StatusID  int    `json:"status_id"`        // ID статуса (например, ContentApproved, ContentRejected)
+	UserID	int64  `json:"user_id"`          // ID пользователя, который принял решение
 	Reason    string `json:"reason,omitempty"` // Причина отклонения, если контент не принят
+}
+
+type ContentFilter struct {
+	UserId     *int64
+	StatusId  *int32
+	SearchText *string
+	StartTime  *string
+	EndTime    *string
 }

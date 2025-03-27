@@ -1,1 +1,58 @@
 тех задание будет здесь позже...
+
+ЮЗЕР создал add content 
+добавился в бд и статус = 1
+
+1. юзер отправляет на модерацию 
+gRPC Send_content_history
+
+
+
+status = 2 , userId , contentID
+
+SELECT * FROM public.content
+ORDER BY id ASC 
+
+select c.id, max(ch.id)
+from content c
+inner join content_history ch on ch.content_id = c.id
+group by c.id
+
+
+2.Модератор 
+getContent
+вернуть entity.ContentForDB
+
+3. фильтр по user_id status_id time 
+
+
+
+
+
+
+//TODO
+strings.Builder
+join sql
+index sql
+
+
+
+gateaway 
+
+
+1. Пользователь отправляет контент на модерацию status_id = 1 --> 2 
+Модератор принимает/отклоняет content , status_id = 2 --> 3 || 4 , создается новая строка в content_history
+if status_id == 4 --> Пользователь делает правки и повторно отправляет на модерацию 
+
+
+2. Пользовательно отправляет на модерацию 
+if last status_id < 2 :
+отправляем на модерацию 
+if last status_id > 1 || < 3 
+контент уже отправлен на модерацию
+if last status_id > 3 
+контент отправляется на модерацию 
+if last status_id < 3 || > 2 
+контент подтвержден 
+
+
