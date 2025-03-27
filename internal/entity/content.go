@@ -28,6 +28,7 @@ type ContentHistory struct {
 	StatusID  int       `json:"status_id"`
 	CreatedAt time.Time `json:"created_at"`
 	UserID    int64     `json:"user_id"`
+	Reason	string    `json:"reason"`
 }
 
 type ContentForMonitor struct {

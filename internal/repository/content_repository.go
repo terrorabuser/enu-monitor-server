@@ -69,7 +69,8 @@ func (r *ContentRepository) GetContents(filter *entity.ContentFilter) ([]*entity
 			FROM content_history 
 			WHERE content_id = c.id
 		)
-	WHERE 1=1;`
+	WHERE 1=1
+	ORDER BY c.id ASC;`
 
 	var args []interface{}
 
@@ -104,12 +105,6 @@ func (r *ContentRepository) GetContents(filter *entity.ContentFilter) ([]*entity
 		args = append(args, *filter.EndTime)
 		log.Printf("Добавлен фильтр по EndTime: %v", *filter.EndTime)
 	}
-
-	// Сортировка по ID
-	query += " ORDER BY c.id ASC"
-
-	log.Printf("Сформированный запрос: %s", query)
-	log.Printf("Аргументы для запроса: %v", args)
 
 	// Выполнение запроса
 	rows, err := r.db.Query(query, args...)
@@ -165,9 +160,10 @@ func (r *ContentRepository) DeleteContent(contentID int) error {
 
 // Добавление истории контента
 func (r *ContentRepository) AddContentHistory(tx *sql.Tx, contentHistory *entity.ContentHistory) error {
+	log.Printf("Добавление истории контента: %+v", contentHistory)
 	_, err := tx.Exec(
-		"INSERT INTO content_history (content_id, status_id, created_at, user_id) VALUES ($1, $2, $3, $4)",
-		contentHistory.ContentID, contentHistory.StatusID, contentHistory.CreatedAt, contentHistory.UserID,
+		"INSERT INTO content_history (content_id, status_id, created_at, user_id, reason) VALUES ($1, $2, $3, $4, $5)",
+		contentHistory.ContentID, contentHistory.StatusID, contentHistory.CreatedAt, contentHistory.UserID, contentHistory.Reason,
 	)
 	return err
 }

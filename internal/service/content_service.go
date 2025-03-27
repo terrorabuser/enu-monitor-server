@@ -94,7 +94,6 @@ func (s *ContentService) SendContentToModeration(contentID, statusID int, userID
 		return "", err
 	}
 
-
 	// Проверка lastStatusID
 	if lastStatusID == entity.ContentModerated{
 		return "Контент уже отправлен на модерацию", nil
@@ -104,7 +103,7 @@ func (s *ContentService) SendContentToModeration(contentID, statusID int, userID
 		return "Контент уже одобрен", nil
 	}
 
-	if lastStatusID == entity.ContentCreated && lastStatusID != entity.ContentRejected {
+	if lastStatusID == entity.ContentCreated || lastStatusID == entity.ContentRejected {
 
 		err := s.repo.AddContentHistory(tx, &entity.ContentHistory{
 			ContentID: contentID,
@@ -115,16 +114,17 @@ func (s *ContentService) SendContentToModeration(contentID, statusID int, userID
 		if err != nil {
 			return "", err
 		}
+
+		// Фиксация транзакции
+		if err := tx.Commit(); err != nil {
+			return "", err
+		}
 		return "Контент отправлен на модерацию!!!", nil
 	}
 
 	
-	// Фиксация транзакции
-	if err := tx.Commit(); err != nil {
-		return "", err
-	}
+	
 
-	// Если `Commit()` прошел успешно, `defer tx.Rollback()` ничего не сделает
 	return "ы", nil
 }
 
@@ -152,16 +152,19 @@ func (s *ContentService) ModerateContent(req *entity.ModerateContentRequest) (bo
 			StatusID:  req.StatusID,
 			CreatedAt: time.Now(),
 			UserID:    req.UserID,
+			Reason:  req.Reason,
 		})
 		if err != nil {
 			return false, err
 		}
+
+		// Фиксируем транзакцию перед возвратом успеха
+		if err = tx.Commit(); err != nil {
+			return false, err
+		}
+
 		return true, nil
 	}  
-	// Фиксация транзакции
-	if err := tx.Commit(); err != nil {
-		return false, err
-	}
-
+	
 	return false, err
 }
