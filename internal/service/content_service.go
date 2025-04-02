@@ -76,11 +76,16 @@ func (s *ContentService) GetContents(ctx context.Context, filter *entity.Content
 		return nil, errors.New("status_id must be between 1 and 4")
 	}
 
+
 	// Построение запроса
 	qb := repository.NewContentQueryBuilder().
 		ApplyUserId(filter.UserId).
-		ApplyStatusId(filter.StatusId).
-		ApplyTimeFilters(filter.StartTime, filter.EndTime)
+		ApplyStatusId(filter.StatusId)
+
+	// Проверяем, что время не является "нулевым" (1970-01-01 00:00:00)
+	// if filter.StartTime != nil && !filter.StartTime.IsZero() && filter.EndTime != nil && !filter.EndTime.IsZero() {
+	// 	qb.ApplyTimeFilters(filter.StartTime, filter.EndTime)
+	// }
 
 	query, args := qb.Build()
 
@@ -93,12 +98,11 @@ func (s *ContentService) GetContents(ctx context.Context, filter *entity.Content
 	return contents, nil
 	
 }
-func (s *ContentService) SendContentToModeration(contentID, statusID int, userID int64) (string, error) {
-	// если переданный statusID не равен entity.ContentModerated, то возвращаем ошибку
-	if statusID != entity.ContentModerated {
-		return "Недостаточно прав для совершения операции", nil
+func (s *ContentService) SendContentToModeration(contentID int, userID int64) (string, error) {
+	// Проверка валидности входных данных
+	if contentID <= 0 {
+		return "", errors.New("contentID must be positive")
 	}
-
 
 	// старт транзакции
 	tx, err := s.repo.BeginTransaction()
@@ -126,7 +130,7 @@ func (s *ContentService) SendContentToModeration(contentID, statusID int, userID
 
 		err := s.repo.AddContentHistory(tx, &entity.ContentHistory{
 			ContentID: contentID,
-			StatusID:  statusID,
+			StatusID:  entity.ContentModerated,
 			CreatedAt: time.Now(),
 			UserID:    userID,
 		})

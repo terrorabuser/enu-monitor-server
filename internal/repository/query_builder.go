@@ -15,14 +15,16 @@ type ContentQueryBuilder struct {
 func NewContentQueryBuilder() *ContentQueryBuilder{
 	qb := &ContentQueryBuilder{}
 	qb.query.WriteString(`SELECT 
-		c.id, c.user_id, c.macaddress, c.file_name, 
-		c.file_path, c.start_time, c.end_time,
-		ch.id AS history_id, ch.status_id, ch.created_at, 
-		ch.user_id AS history_user_id
+    c.id, c.user_id, c.macaddress, c.file_name, 
+    c.file_path, c.start_time, c.end_time,
+    ch.id AS history_id, ch.content_id AS history_content_id, 
+    ch.status_id, ch.created_at, 
+    ch.user_id, ch.reason AS history_user_id
 	FROM content c
 	LEFT JOIN content_history ch ON ch.content_id = c.id
 		AND ch.id = (SELECT MAX(id) FROM content_history WHERE content_id = c.id)
-	WHERE 1=1`)
+	WHERE 1=1
+	`)
 	return qb
 }
 

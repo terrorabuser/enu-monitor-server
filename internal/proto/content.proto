@@ -4,7 +4,7 @@ package content;
 
 import "google/protobuf/timestamp.proto";
 
-option go_package = "your_project/internal/proto/contentpb";
+option go_package = "content_service/internal/proto";
 
 service ContentService {
   rpc ModerateContent(ModerateContentRequest) returns (ModerateContentResponse);
@@ -33,7 +33,6 @@ message ModerateContentRequest {
   int32 content_id = 2;
   int32 status_id = 3;
   string reason = 4;
-  google.protobuf.Timestamp decision_time = 5; // Добавлено время принятия решения
 }
 
 message ModerateContentResponse {
@@ -54,17 +53,14 @@ message GetContentsResponse {
 message SendContentToModerationRequest {
   int64 user_id = 1;
   int32 content_id = 2;
-  int32 status_id = 3;
-  string reason = 4;
 }
 
 
 enum ModerationStatus {
-  SUCCESS = 0;
-  ALREADY_SENT = 1;
-  INVALID_CONTENT = 2;
-  PERMISSION_DENIED = 3;
-  INTERNAL_ERROR = 4;
+  CREATED = 0; // Контент создан
+  IN_PROGRESS = 1; // Контент на модерации
+  APPROVED = 2; // Контент одобрен
+  REJECTED = 3; // Контент отклонен
 }
 
 message SendContentToModerationResponse {

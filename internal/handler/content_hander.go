@@ -65,47 +65,44 @@ func (h *ContentHandler) GetContents(ctx context.Context, req *pb.GetContentsReq
 	 // Преобразование protobuf.Timestamp в time.Time
 	startTime := req.GetStartTime().AsTime()
 	endTime := req.GetEndTime().AsTime()
- 
-	 // Создаем фильтр из запроса
-	 filter := &entity.ContentFilter{
-		 UserId:    req.UserId,
-		 StatusId: req.StatusId, 
-		 StartTime: &startTime,
-		 EndTime:   &endTime,
-	 }
 
-	 log.Printf("Получаем контент с фильтром: %+v", filter)
-	 
 	
-
+		
+	// Создаем фильтр из запроса
+	filter := &entity.ContentFilter{
+		UserId:    req.UserId,
+		StatusId: req.StatusId, 
+		StartTime: &startTime,
+		EndTime:   &endTime,
+	}
+	
+	
 	 contents, err := h.service.GetContents(ctx, filter)
 	 if err != nil {
 		 log.Println("Ошибка получения контента для модерации:", err)
 		 return nil, err
 	 }
-	 
-	 // Логируем содержимое contents
-	 log.Printf("Полученные данные о контенте: %+v", contents)
+	
 	 
 	 var pbContents []*pb.ContentForDB
 	 for _, content := range contents {
-		 log.Printf("Обрабатываем контент: %+v", content)
 	 
-	 
+
 		 pbContents = append(pbContents, &pb.ContentForDB{
 			 Id:        int32(content.ID),
 			 UserId:    content.UserID,
 			 MacAddress: content.MacAddress,
 			 FileName:  content.FileName,
 			 FilePath:  content.FilePath,
-			 StartTime: req.StartTime,
-			 EndTime:   req.EndTime,
+			 StartTime: timestamppb.New(content.StartTime),
+			 EndTime:   timestamppb.New(content.EndTime),
 			 LatestHistory: &pb.ContentHistory{
 				 Id:        int32(content.LatestHistory.ID),
 				 ContentId: int32(content.LatestHistory.ContentID),
 				 StatusId:  int32(content.LatestHistory.StatusID),
 				 CreatedAt: timestamppb.New(content.LatestHistory.CreatedAt), // Преобразуем time.Time в строку
 				 UserId:    content.LatestHistory.UserID,
+				 Reason:  content.LatestHistory.Reason,
 			 },
 		 })
 	 }
@@ -143,7 +140,7 @@ func (h *ContentHandler) SendContentToModeration(ctx context.Context, req *pb.Se
 	log.Printf("Received SendContentToModeration request: %+v", req)
 	// возвращаем ошибку если не удалось отправить контент на модерацию
 
-	response, err := h.service.SendContentToModeration(int(req.ContentId),int(req.StatusId), req.UserId)
+	response, err := h.service.SendContentToModeration(int(req.ContentId), req.UserId)
 	if err != nil {
 		log.Println("Ошибка отправки контента на модерацию:", err)
 		return &pb.SendContentToModerationResponse{Message: response}, err

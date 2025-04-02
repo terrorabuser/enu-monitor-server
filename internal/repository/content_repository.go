@@ -72,9 +72,11 @@ func (r *ContentRepository) GetContents(ctx context.Context, query string, args 
 			&content.StartTime,
 			&content.EndTime,
 			&history.ID,
+			&history.ContentID,
 			&history.StatusID,
 			&history.CreatedAt,
 			&history.UserID,
+			&history.Reason,
 		); err != nil {
 			return nil, fmt.Errorf("failed to scan row: %w", err)
 		}

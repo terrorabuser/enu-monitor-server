@@ -4,7 +4,7 @@
 // - protoc             v6.30.0
 // source: internal/proto/content.proto
 
-package contentpb
+package proto
 
 import (
 	context "context"
