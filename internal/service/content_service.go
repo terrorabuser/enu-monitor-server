@@ -82,10 +82,10 @@ func (s *ContentService) GetContents(ctx context.Context, filter *entity.Content
 		ApplyUserId(filter.UserId).
 		ApplyStatusId(filter.StatusId)
 
-	// Проверяем, что время не является "нулевым" (1970-01-01 00:00:00)
-	// if filter.StartTime != nil && !filter.StartTime.IsZero() && filter.EndTime != nil && !filter.EndTime.IsZero() {
-	// 	qb.ApplyTimeFilters(filter.StartTime, filter.EndTime)
-	// }
+	// Проверяем, что время не является "нулевым" 
+	if filter.StartTime != nil || filter.EndTime != nil  {
+		qb.ApplyTimeFilters(filter.StartTime, filter.EndTime)
+	}
 
 	query, args := qb.Build()
 

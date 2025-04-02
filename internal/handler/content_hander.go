@@ -62,19 +62,24 @@ func (h *ContentHandler) AddContent(ctx context.Context, req *pb.AddContentReque
 // Получение контента 
 func (h *ContentHandler) GetContents(ctx context.Context, req *pb.GetContentsRequest) (*pb.GetContentsResponse, error) {
 	
-	 // Преобразование protobuf.Timestamp в time.Time
-	startTime := req.GetStartTime().AsTime()
-	endTime := req.GetEndTime().AsTime()
-
-	
 		
 	// Создаем фильтр из запроса
 	filter := &entity.ContentFilter{
 		UserId:    req.UserId,
 		StatusId: req.StatusId, 
-		StartTime: &startTime,
-		EndTime:   &endTime,
 	}
+
+		// Обрабатываем StartTime (если задано)
+	if req.StartTime != nil {
+		startTime := req.StartTime.AsTime()
+		filter.StartTime = &startTime
+	}
+
+	// Обрабатываем EndTime (если задано)
+	if req.EndTime != nil {
+		endTime := req.EndTime.AsTime()
+		filter.EndTime = &endTime
+}
 	
 	
 	 contents, err := h.service.GetContents(ctx, filter)

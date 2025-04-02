@@ -4,7 +4,7 @@ package content;
 
 import "google/protobuf/timestamp.proto";
 
-option go_package = "content_service/internal/proto";
+option go_package = "/proto";
 
 service ContentService {
   rpc ModerateContent(ModerateContentRequest) returns (ModerateContentResponse);
