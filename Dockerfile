@@ -1,27 +1,12 @@
-FROM golang:1.23.3-alpine
+FROM golang:1.23.0-alpine AS build
 
-WORKDIR /app
+RUN go version
+ENV GOPATH=/
 
-# Устанавливаем необходимые зависимости
-RUN apk add --no-cache curl && \
-    curl -L https://github.com/golang-migrate/migrate/releases/download/v4.15.2/migrate.linux-amd64.tar.gz | tar xvz && \
-    mv migrate /usr/local/bin/
+COPY ./ ./
 
-# Копируем файлы проекта
-COPY go.mod ./  
-COPY go.sum ./  
-RUN go mod download  
+RUN go mod tidy
+RUN go build -o /app ./cmd/main.go
 
-COPY . .  
+CMD [ "/app" ]
 
-# Компилируем приложение
-RUN go build -o main ./cmd/main.go  
-
-# Открываем порт
-EXPOSE 8080  
-
-# Копируем файлы миграций
-COPY migrations /migrations  
-
-# Команда для запуска миграций и сервера
-CMD /usr/local/bin/migrate -path /migrations -database "postgres://postgres:mypass@postgres_db:5432/postgres?sslmode=disable" up && ./main

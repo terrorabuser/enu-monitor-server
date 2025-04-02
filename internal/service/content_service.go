@@ -1,6 +1,9 @@
 package service
 
 import (
+	"context"
+	"errors"
+	"fmt"
 	"golang_gpt/internal/entity"
 	"golang_gpt/internal/repository"
 	"time"
@@ -63,17 +66,33 @@ func (s *ContentService) GetMacAddressByLocation(building string, floor int, not
 
 
 // content_id, status_id, user_id
-func (s *ContentService) GetContents(filter *entity.ContentFilter) ([]*entity.ContentForDB, error) {
-
-	contents, err := s.repo.GetContents(filter)
-	if err != nil {
-		return nil, err
+func (s *ContentService) GetContents(ctx context.Context, filter *entity.ContentFilter) ([]*entity.ContentForDB, error) {
+	// Валидация параметров
+	if filter.UserId != nil && *filter.UserId < 0 {
+		return nil, errors.New("user_id must be positive")
 	}
+
+	if filter.StatusId != nil && (*filter.StatusId < 1 || *filter.StatusId > 4) {
+		return nil, errors.New("status_id must be between 1 and 4")
+	}
+
+	// Построение запроса
+	qb := repository.NewContentQueryBuilder().
+		ApplyUserId(filter.UserId).
+		ApplyStatusId(filter.StatusId).
+		ApplyTimeFilters(filter.StartTime, filter.EndTime)
+
+	query, args := qb.Build()
+
+	// Выполнение запроса
+	contents, err := s.repo.GetContents(ctx, query, args)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get contents: %w", err)
+	}
+
 	return contents, nil
-
+	
 }
-
-
 func (s *ContentService) SendContentToModeration(contentID, statusID int, userID int64) (string, error) {
 	// если переданный statusID не равен entity.ContentModerated, то возвращаем ошибку
 	if statusID != entity.ContentModerated {

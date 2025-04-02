@@ -1,7 +1,9 @@
 package repository
 
 import (
+	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"golang_gpt/internal/entity"
 	"log"
@@ -46,107 +48,45 @@ func (r *ContentRepository) GetContentByMonitor(MacAddress string) (*entity.Cont
 
 
 // Получение списка контента с фильтрацией
-func (r *ContentRepository) GetContents(filter *entity.ContentFilter) ([]*entity.ContentForDB, error) {
-	query := `SELECT 
-		c.id, 
-		c.user_id, 
-		c.macaddress, 
-		c.file_name, 
-		c.file_path, 
-		c.start_time, 
-		c.end_time,
-		ch.id AS history_id,
-		ch.status_id, 
-		ch.created_at, 
-		ch.user_id AS history_user_id
-	FROM 
-		content c
-	LEFT JOIN 
-		content_history ch 
-		ON ch.content_id = c.id
-		AND ch.id = (
-			SELECT MAX(id) 
-			FROM content_history 
-			WHERE content_id = c.id
-		)
-	WHERE 1=1
-	ORDER BY c.id ASC;`
-
-	var args []interface{}
-
-	//1, 2, 4,      2, 4, 2, 3
-
-	log.Printf("Фильтр: %+v", filter)
-
-	// Фильтр по UserId
-	if filter.UserId != nil && *filter.UserId != 0 {
-		query += fmt.Sprintf(" AND c.user_id = $%d", len(args)+1)
-		args = append(args, *filter.UserId)
-		log.Printf("Добавлен фильтр по UserId: %v", *filter.UserId)
-	}
-
-	// Фильтр по StatusId (одно значение)
-	if filter.StatusId != nil && *filter.StatusId != 0 {
-		query += fmt.Sprintf(" AND ch.status_id = $%d", len(args)+1)
-		args = append(args, *filter.StatusId)
-		log.Printf("Добавлен фильтр по StatusId: %v", *filter.StatusId)
-	}
-
-	// Фильтр по StartTime
-	if filter.StartTime != nil && *filter.StartTime != "" {
-		query += fmt.Sprintf(" AND c.start_time >= $%d", len(args)+1)
-		args = append(args, *filter.StartTime)
-		log.Printf("Добавлен фильтр по StartTime: %v", *filter.StartTime)
-	}
-
-	// Фильтр по EndTime
-	if filter.EndTime != nil && *filter.EndTime != "" {
-		query += fmt.Sprintf(" AND c.end_time <= $%d", len(args)+1)
-		args = append(args, *filter.EndTime)
-		log.Printf("Добавлен фильтр по EndTime: %v", *filter.EndTime)
-	}
-
-	// Выполнение запроса
-	rows, err := r.db.Query(query, args...)
-	if err != nil {
-		log.Printf("Ошибка при получении контента: %v", err)
-		return nil, err
+func (r *ContentRepository) GetContents(ctx context.Context, query string, args []interface{}) ([]*entity.ContentForDB, error) {
+	rows , err := r.db.QueryContext(ctx,query,args...)
+	if err != nil{
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to execute query: %w", err)
 	}
 	defer rows.Close()
 
-	// Чтение результатов
 	var contents []*entity.ContentForDB
 	for rows.Next() {
 		var content entity.ContentForDB
 		var history entity.ContentHistory
-		err := rows.Scan(&content.ID, &content.UserID, &content.MacAddress, &content.FileName,
-			&content.FilePath, &content.StartTime, &content.EndTime,
-			&history.ID, &history.StatusID, &history.CreatedAt, &history.UserID)
-		if err != nil {
-			log.Printf("Ошибка при сканировании строки: %v", err)
-			continue // Пропускаем ошибочные строки
+		
+		if err := rows.Scan(
+			&content.ID,
+			&content.UserID,
+			&content.MacAddress,
+			&content.FileName,
+			&content.FilePath,
+			&content.StartTime,
+			&content.EndTime,
+			&history.ID,
+			&history.StatusID,
+			&history.CreatedAt,
+			&history.UserID,
+		); err != nil {
+			return nil, fmt.Errorf("failed to scan row: %w", err)
 		}
 
-
-		// Присваиваем LatestHistory
-		content.LatestHistory = entity.ContentHistory{
-			ID:        history.ID,
-			ContentID: content.ID,
-			StatusID:  history.StatusID,
-			CreatedAt: history.CreatedAt,
-			UserID:    history.UserID,
-		}
-
+		content.LatestHistory = &history
 		contents = append(contents, &content)
 	}
 
-	// Проверка ошибок при итерации по строкам
-	if err = rows.Err(); err != nil {
-		log.Printf("Ошибка при итерации по строкам: %v", err)
-		return nil, err
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("rows iteration error: %w", err)
 	}
 
-	log.Printf("Получено %d строк контента", len(contents))
 	return contents, nil
 }
 

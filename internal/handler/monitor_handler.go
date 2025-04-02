@@ -25,3 +25,4 @@ func (h *MonitorHandler) GetAllMonitors(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, monitors)
 
 }
+

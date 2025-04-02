@@ -8,6 +8,7 @@ import (
 	"log"
 
 	socketio "github.com/googollee/go-socket.io"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type ContentHandler struct {
@@ -19,6 +20,7 @@ type ContentHandler struct {
 func NewContentHandler(svc *service.ContentService, server *socketio.Server) *ContentHandler {
 	return &ContentHandler{service: svc, server: server}
 }
+
 
 // Добавление контента
 func (h *ContentHandler) AddContent(ctx context.Context, req *pb.AddContentRequest) (*pb.AddContentResponse, error) {
@@ -32,13 +34,18 @@ func (h *ContentHandler) AddContent(ctx context.Context, req *pb.AddContentReque
 		return nil, err
 	}
 
+	 // Преобразование protobuf.Timestamp в time.Time
+	startTime := req.GetStartTime().AsTime()
+	endTime := req.GetEndTime().AsTime()
+
+
 	content := &entity.ContentForDB{
-		UserID:    req.UserId, // В будущем передавать из аутентификации
+		UserID:    req.UserId,
 		MacAddress: macAddress,
 		FileName:  req.FileName,
 		FilePath:  req.FilePath,
-		StartTime: req.StartTime,
-		EndTime:   req.EndTime,
+		 StartTime: startTime,
+		 EndTime:   endTime,
 	}
 	log.Printf("Добавляем контент: %+v", content)
 
@@ -55,16 +62,23 @@ func (h *ContentHandler) AddContent(ctx context.Context, req *pb.AddContentReque
 // Получение контента 
 func (h *ContentHandler) GetContents(ctx context.Context, req *pb.GetContentsRequest) (*pb.GetContentsResponse, error) {
 	
+	 // Преобразование protobuf.Timestamp в time.Time
+	startTime := req.GetStartTime().AsTime()
+	endTime := req.GetEndTime().AsTime()
  
 	 // Создаем фильтр из запроса
 	 filter := &entity.ContentFilter{
-		 UserId:    &req.UserId,
-		 StatusId: &req.StatusId, 
-		 StartTime: &req.StartTime,
-		 EndTime:   &req.EndTime,
+		 UserId:    req.UserId,
+		 StatusId: req.StatusId, 
+		 StartTime: &startTime,
+		 EndTime:   &endTime,
 	 }
 
-	 contents, err := h.service.GetContents(filter)
+	 log.Printf("Получаем контент с фильтром: %+v", filter)
+	 
+	
+
+	 contents, err := h.service.GetContents(ctx, filter)
 	 if err != nil {
 		 log.Println("Ошибка получения контента для модерации:", err)
 		 return nil, err
@@ -84,13 +98,13 @@ func (h *ContentHandler) GetContents(ctx context.Context, req *pb.GetContentsReq
 			 MacAddress: content.MacAddress,
 			 FileName:  content.FileName,
 			 FilePath:  content.FilePath,
-			 StartTime: content.StartTime,
-			 EndTime:   content.EndTime,
+			 StartTime: req.StartTime,
+			 EndTime:   req.EndTime,
 			 LatestHistory: &pb.ContentHistory{
 				 Id:        int32(content.LatestHistory.ID),
 				 ContentId: int32(content.LatestHistory.ContentID),
 				 StatusId:  int32(content.LatestHistory.StatusID),
-				 CreatedAt: content.LatestHistory.CreatedAt.String(), // Преобразуем time.Time в строку
+				 CreatedAt: timestamppb.New(content.LatestHistory.CreatedAt), // Преобразуем time.Time в строку
 				 UserId:    content.LatestHistory.UserID,
 			 },
 		 })
